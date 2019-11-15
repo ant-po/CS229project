@@ -1,2 +1,2 @@
 # CS229project
-CS229 project
+Fooling copy image matching algorithms with GANs
