@@ -1,8 +1,8 @@
 import numpy as np
 import imagehash as ih
-
 from torchvision import transforms, datasets
 from PIL import Image
+
 
 def mnist_data():
     compose = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.5], [0.5])])
@@ -18,7 +18,7 @@ def hamming_distance(hash_vector1, hash_vector2, normalised=False):
 
 
 def get_hamm_dist_ahash(image1, image2):
-    # data = mnist_data()
+    # get Hamming distance between block averaged hashes of image1 and image2
     image1 = Image.fromarray(image1)
     image2 = Image.fromarray(image2)
     image1_hash = ih.average_hash(image1)
@@ -38,24 +38,33 @@ def images_to_vectors(images):
 
 
 def vectors_to_images(vectors):
+    # convert any array into pixel values
+    side = np.sqrt(vectors.shape[1]).astype(int)
     vectors = vectors - np.min(vectors)
     vectors = vectors / np.max(vectors)
-    return vectors.reshape([28, 28])*256
+    return vectors.reshape([side, side])*256
 
 
 def image_to_bool(image_pixel_vector):
-    image_pixel_vector = image_pixel_vector/256
+    # convert image pixel vector into a boolean array of the same size
+    # where True corresponds to pixel value being larger than the average
+    image_pixel_vector = image_pixel_vector
     avg = np.mean(image_pixel_vector)
     image_pixel_vector_bool = image_pixel_vector > avg
     return image_pixel_vector_bool.astype(float)
 
 
-def image_block_feature(image_pixel_vector, block_num=16):
-    block_size = 7
+def image_to_block_feature(image_pixel_vector):
+    # convert full-res image into a block feature set
     image_2d = image_pixel_vector.reshape([28, 28])
-    blocks_2d = np.ones(shape=[4, 4])
-    for i in range(len(blocks_2d)):
-        for j in range(len(blocks_2d)):
-            blocks_2d[i, j] = np.mean(image_2d[i*block_size:(i+1)*block_size, j*block_size:(j+1)*block_size])
-    blocks_final = image_to_bool(blocks_2d.reshape([1, 16]))
-    return blocks_final
+    blocks_final = np.array(Image.fromarray(image_2d).convert("L").resize((8, 8), Image.ANTIALIAS))
+    blocks_final = vectors_to_images(blocks_final.reshape([1, 64])).reshape([1, 64])
+    return blocks_final/256
+
+
+def block_feature_to_image(blocks):
+    # convert feature set into a full-res image
+    blocks = blocks.reshape([8, 8])
+    img = np.array(Image.fromarray(blocks).resize((28, 28), Image.BICUBIC))
+    img = vectors_to_images(img.reshape([1, 784]))
+    return img
